@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `game_session` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id` BIGINT DEFAULT NULL COMMENT '用户ID',
+    `session_no` VARCHAR(64) DEFAULT NULL COMMENT '会话编号',
+    `player_name` VARCHAR(50) DEFAULT NULL COMMENT '玩家姓名',
+    `current_age` INT DEFAULT 18 COMMENT '当前年龄',
+    `current_step` INT DEFAULT 0 COMMENT '当前步数',
+    `life_status` JSON DEFAULT NULL COMMENT '人生状态',
+    `current_story` TEXT COMMENT '当前剧情',
+    `current_choices` JSON DEFAULT NULL COMMENT '当前选项',
+    `game_status` TINYINT DEFAULT 1 COMMENT '游戏状态：1进行中 2已结束',
+    `ending_summary` TEXT COMMENT '结局摘要',
+    `score` INT DEFAULT 0 COMMENT '人生评分',
+    `created_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_session_no` (`session_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏会话表';

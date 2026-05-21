@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qingchi.ailife.mapper.IGameStepMapper">
+
+    <resultMap id="BaseResultMap" type="com.qingchi.ailife.entity.GameStep">
+        <id column="id" property="id"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="step_no" property="stepNo"/>
+        <result column="story" property="story"/>
+        <result column="user_choice" property="userChoice"/>
+        <result column="state_before" property="stateBefore"/>
+        <result column="state_after" property="stateAfter"/>
+        <result column="event_type" property="eventType"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_step (
+            session_id, step_no, story, user_choice,
+            state_before, state_after, event_type
+        ) VALUES (
+            #{sessionId}, #{stepNo}, #{story}, #{userChoice},
+            #{stateBefore}, #{stateAfter}, #{eventType}
+        )
+    </insert>
+
+    <select id="listBySessionId" resultMap="BaseResultMap">
+        SELECT id, session_id, step_no, story, user_choice,
+               state_before, state_after, event_type, created_time
+        FROM game_step
+        WHERE session_id = #{sessionId} AND deleted = 0
+        ORDER BY step_no ASC
+    </select>
+</mapper>

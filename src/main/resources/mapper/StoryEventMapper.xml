@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qingchi.ailife.mapper.IStoryEventMapper">
+
+    <resultMap id="BaseResultMap" type="com.qingchi.ailife.entity.StoryEvent">
+        <id column="id" property="id"/>
+        <result column="event_code" property="eventCode"/>
+        <result column="title" property="title"/>
+        <result column="event_type" property="eventType"/>
+        <result column="rarity" property="rarity"/>
+        <result column="min_age" property="minAge"/>
+        <result column="max_age" property="maxAge"/>
+        <result column="trigger_condition" property="triggerCondition"/>
+        <result column="event_content" property="eventContent"/>
+        <result column="choices" property="choices"/>
+        <result column="effect" property="effect"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <select id="selectByEventCode" resultMap="BaseResultMap">
+        SELECT id, event_code, title, event_type, rarity, min_age, max_age,
+               trigger_condition, event_content, choices, effect
+        FROM story_event
+        WHERE event_code = #{eventCode} AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="listByAge" resultMap="BaseResultMap">
+        SELECT id, event_code, title, event_type, rarity, min_age, max_age,
+               event_content, choices, effect
+        FROM story_event
+        WHERE deleted = 0
+          AND (min_age IS NULL OR min_age &lt;= #{age})
+          AND (max_age IS NULL OR max_age &gt;= #{age})
+        ORDER BY rarity DESC
+    </select>
+</mapper>

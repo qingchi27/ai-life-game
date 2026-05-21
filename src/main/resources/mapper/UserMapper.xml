@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qingchi.ailife.mapper.IUserMapper">
+
+    <resultMap id="BaseResultMap" type="com.qingchi.ailife.entity.User">
+        <id column="id" property="id"/>
+        <result column="nickname" property="nickname"/>
+        <result column="open_id" property="openId"/>
+        <result column="avatar" property="avatar"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, nickname, open_id, avatar, created_time, updated_time, deleted
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `user`
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `user` (nickname, open_id, avatar)
+        VALUES (#{nickname}, #{openId}, #{avatar})
+    </insert>
+</mapper>

@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: ai-life-game
+  datasource:
+    url: jdbc:mysql://localhost:3306/ai_life_game?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+logging:
+  level:
+    com.qingchi.ailife.mapper: debug
+
+game:
+  max-step: 30
+  default-user-id: 1

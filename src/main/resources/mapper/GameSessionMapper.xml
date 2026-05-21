@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qingchi.ailife.mapper.IGameSessionMapper">
+
+    <resultMap id="BaseResultMap" type="com.qingchi.ailife.entity.GameSession">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="session_no" property="sessionNo"/>
+        <result column="player_name" property="playerName"/>
+        <result column="current_age" property="currentAge"/>
+        <result column="current_step" property="currentStep"/>
+        <result column="life_status" property="lifeStatus"/>
+        <result column="current_story" property="currentStory"/>
+        <result column="current_choices" property="currentChoices"/>
+        <result column="game_status" property="gameStatus"/>
+        <result column="ending_summary" property="endingSummary"/>
+        <result column="score" property="score"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, session_no, player_name, current_age, current_step,
+        life_status, current_story, current_choices, game_status,
+        ending_summary, score, created_time, updated_time, deleted
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM game_session
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_session (
+            user_id, session_no, player_name, current_age, current_step,
+            life_status, current_story, current_choices, game_status, score
+        ) VALUES (
+            #{userId}, #{sessionNo}, #{playerName}, #{currentAge}, #{currentStep},
+            #{lifeStatus}, #{currentStory}, #{currentChoices}, #{gameStatus}, #{score}
+        )
+    </insert>
+
+    <update id="updateById">
+        UPDATE game_session
+        SET current_age = #{currentAge},
+            current_step = #{currentStep},
+            life_status = #{lifeStatus},
+            current_story = #{currentStory},
+            current_choices = #{currentChoices},
+            game_status = #{gameStatus},
+            ending_summary = #{endingSummary},
+            score = #{score}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+</mapper>

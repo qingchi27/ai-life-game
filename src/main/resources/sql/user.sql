@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS `user` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `nickname` VARCHAR(50) DEFAULT NULL COMMENT '昵称',
+    `open_id` VARCHAR(100) DEFAULT NULL COMMENT '微信OpenID',
+    `avatar` VARCHAR(255) DEFAULT NULL COMMENT '头像地址',
+    `created_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_open_id` (`open_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
