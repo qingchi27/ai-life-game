@@ -127,6 +127,9 @@ EVENTS = [
     ("ID_THEFT", "信息泄露", "life", 2, 22, 50, "收到陌生短信, 你的个人信息可能在暗网流通...", '["改密码", "报警", "无视"]', {"money": -1000, "luck": -8, "health": -2}),
     ("LUCKY_CHARM", "转运符", "luck", 1, 20, 60, "寺庙里求了一个转运符, 心理安慰不少...", '["虔诚供奉", "图个心安", "不信这些"]', {"money": -100, "luck": 8, "health": 2}),
     ("SUNRISE_HIKE", "看日出", "life", 1, 18, 60, "朋友约你凌晨爬山看日出...", '["出发", "放鸽子", "改看日落"]', {"money": -200, "health": 5, "luck": 6}),
+    ("MILESTONE_PARTNER", "三十而立·遇见伴侣", "relationship", 5, 30, 40, "三十岁的关口, 家人朋友为你张罗相亲, 你也渴望安定下来...", '["认真交往", "顺其自然", "专注工作"]', {"money": -1000, "relationship": 20, "luck": 5}),
+    ("MILESTONE_MARRIAGE", "三十而立·携手成家", "relationship", 5, 30, 40, "相处日久, 你们决定登记结婚, 开启人生新阶段...", '["浪漫婚礼", "简单领证", "旅行结婚"]', {"money": -30000, "relationship": 25, "luck": 10, "health": -5}),
+    ("MILESTONE_CHILD", "三十而立·喜得贵子", "family", 5, 30, 40, "婚后不久, 家里迎来了新生命, 喜悦与责任一同到来...", '["全职带娃", "请月嫂", "父母帮忙"]', {"money": -15000, "health": -8, "relationship": 20, "luck": 8}),
 ]
 
 
@@ -146,7 +149,7 @@ def map_effect(code: str, effect: dict) -> dict:
             result[key_map[k]] = v
         else:
             result[k] = v
-    if code == "CHILD_BORN":
+    if code in ("CHILD_BORN", "MILESTONE_CHILD"):
         result["childCount"] = result.get("childCount", 0) + 1
         result["childAbility"] = result.get("childAbility", 0) + 25
     if code in ("CHILD_EDUCATION", "CHILD_COLLEGE", "GRANDCHILD"):

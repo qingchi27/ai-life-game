@@ -32,12 +32,21 @@ import java.util.stream.Collectors;
 @Component
 public class DefaultGameEngine implements GameEngine {
 
-    private static final List<String> KEY_EVENT_KEYWORDS = List.of(
-            "创业", "破产", "恋爱", "转职", "副业", "结婚", "离婚"
-    );
+    private static final int KEY_EVENT_STEP_INTERVAL = 5;
+
+    private static final int FAMILY_MILESTONE_MIN_AGE = 30;
+
+    private static final int FAMILY_MILESTONE_MAX_AGE = 40;
+
+    private static final String MILESTONE_PARTNER = "MILESTONE_PARTNER";
+
+    private static final String MILESTONE_MARRIAGE = "MILESTONE_MARRIAGE";
+
+    private static final String MILESTONE_CHILD = "MILESTONE_CHILD";
 
     private static final Set<String> PARTNER_START_EVENTS = Set.of(
-            "CAMPUS_LOVE", "LOVE_MEET", "OFFICE_ROMANCE", "BLIND_DATE", "LONG_DISTANCE"
+            "CAMPUS_LOVE", "LOVE_MEET", "OFFICE_ROMANCE", "BLIND_DATE", "LONG_DISTANCE",
+            MILESTONE_PARTNER
     );
 
     @Resource
@@ -57,10 +66,15 @@ public class DefaultGameEngine implements GameEngine {
         applyChoiceEffect(workingState, choiceContent);
         updateFlagsFromChoice(workingState, choiceContent);
 
-        boolean keyEvent = isKeyEvent(currentStep, choiceContent);
+        int nextStep = currentStep + 1;
+        StoryEvent forcedFamily = resolveForcedFamilyMilestone(workingState, currentAge);
         GameResult result;
-        if (keyEvent) {
-            result = storyGenerator.generateKeyStory(workingState, choiceContent, currentAge);
+        if (forcedFamily != null) {
+            result = buildGameResultFromEvent(workingState, forcedFamily);
+            result.setUseAi(false);
+        } else if (isKeyEvent(nextStep)) {
+            result = storyGenerator.generateKeyStory(workingState, choiceContent, currentAge, nextStep);
+            result.setState(workingState);
             result.setUseAi(true);
         } else {
             result = pickLocalEvent(workingState, currentAge);
@@ -74,6 +88,57 @@ public class DefaultGameEngine implements GameEngine {
                     : "人生事件");
             result.setEvent(event);
         }
+        return result;
+    }
+
+    /**
+     * 30-40 岁未完成成家生子时, 按阶段强制触发里程碑事件
+     *
+     * @param {LifeState} state - 当前状态
+     * @param {int} age - 当前年龄
+     * @returns {StoryEvent} 强制事件, 无需强制时返回 null
+     */
+    private StoryEvent resolveForcedFamilyMilestone(LifeState state, int age) {
+        if (age < FAMILY_MILESTONE_MIN_AGE || age > FAMILY_MILESTONE_MAX_AGE) {
+            return null;
+        }
+        if (state.childCount() > 0) {
+            return null;
+        }
+        if (!Boolean.TRUE.equals(state.getMarried())) {
+            if (!Boolean.TRUE.equals(state.getHasPartner())) {
+                return loadStoryEvent(MILESTONE_PARTNER, "BLIND_DATE");
+            }
+            return loadStoryEvent(MILESTONE_MARRIAGE, "WEDDING");
+        }
+        return loadStoryEvent(MILESTONE_CHILD, "CHILD_BORN");
+    }
+
+    private StoryEvent loadStoryEvent(String primaryCode, String fallbackCode) {
+        StoryEvent event = storyEventMapper.selectByEventCode(primaryCode);
+        if (event == null && fallbackCode != null) {
+            event = storyEventMapper.selectByEventCode(fallbackCode);
+        }
+        return event;
+    }
+
+    private GameResult buildGameResultFromEvent(LifeState state, StoryEvent event) {
+        GameResult result = new GameResult();
+        LifeState newState = copyState(state);
+        result.setState(newState);
+        result.setAgeDelta(1);
+        result.setStory(event.getEventContent());
+        result.setEventType(event.getEventType());
+        result.setChoices(buildChoicesFromEvent(event));
+
+        GameEventVO eventVo = new GameEventVO();
+        eventVo.setType(event.getEventType());
+        eventVo.setTitle(event.getTitle());
+        result.setEvent(eventVo);
+
+        applyEventEffect(newState, event.getEffect());
+        updateFlagsFromEvent(newState, event.getEventCode());
+        newState.recordRecentEvent(event.getEventCode());
         return result;
     }
 
@@ -93,19 +158,7 @@ public class DefaultGameEngine implements GameEngine {
         }
 
         StoryEvent event = eligible.get(ThreadLocalRandom.current().nextInt(eligible.size()));
-        result.setStory(event.getEventContent());
-        result.setEventType(event.getEventType());
-        result.setChoices(buildChoicesFromEvent(event));
-
-        GameEventVO eventVo = new GameEventVO();
-        eventVo.setType(event.getEventType());
-        eventVo.setTitle(event.getTitle());
-        result.setEvent(eventVo);
-
-        applyEventEffect(newState, event.getEffect());
-        updateFlagsFromEvent(newState, event.getEventCode());
-        newState.recordRecentEvent(event.getEventCode());
-        return result;
+        return buildGameResultFromEvent(newState, event);
     }
 
     private List<StoryEvent> filterEligibleEvents(List<StoryEvent> events, LifeState state, int age) {
@@ -172,7 +225,11 @@ public class DefaultGameEngine implements GameEngine {
         } else if ("表白试试".equals(choiceContent) || "主动追求".equals(choiceContent)) {
             state.setHasPartner(true);
             state.setAffection(clamp(safeAdd(state.getAffection(), 15), 0, 100));
-        } else if ("浪漫求婚".equals(choiceContent) || "简单领证".equals(choiceContent)) {
+        } else if ("认真交往".equals(choiceContent) || "顺其自然".equals(choiceContent)) {
+            state.setHasPartner(true);
+            state.setAffection(clamp(safeAdd(state.getAffection(), 10), 0, 100));
+        } else if ("浪漫求婚".equals(choiceContent) || "简单领证".equals(choiceContent)
+                || "浪漫婚礼".equals(choiceContent) || "旅行结婚".equals(choiceContent)) {
             state.setHasPartner(true);
             state.setMarried(true);
             state.setAffection(clamp(safeAdd(state.getAffection(), 10), 0, 100));
@@ -188,6 +245,25 @@ public class DefaultGameEngine implements GameEngine {
             state.setGraduated(true);
             state.setOccupation("职场新人");
             state.setPower(clamp(safeAdd(state.getPower(), 6), 0, 100));
+        } else if ("多陪伴家人".equals(choiceContent)) {
+            state.setAffection(clamp(safeAdd(state.getAffection(), 12), 0, 100));
+            state.setWealth(safeAdd(state.getWealth(), -500));
+        } else if ("拓展社交圈".equals(choiceContent)) {
+            state.setAffection(clamp(safeAdd(state.getAffection(), 8), 0, 100));
+            state.setFame(clamp(safeAdd(state.getFame(), 6), 0, 100));
+        } else if ("专注自我成长".equals(choiceContent)) {
+            state.setPower(clamp(safeAdd(state.getPower(), 8), 0, 100));
+            state.setHealth(clamp(safeAdd(state.getHealth(), 3), 0, 100));
+        } else if ("放慢节奏".equals(choiceContent)) {
+            state.setHealth(clamp(safeAdd(state.getHealth(), 10), 0, 100));
+            state.setLifespan(safeAdd(state.getLifespan(), 1));
+        } else if ("保持冲劲".equals(choiceContent)) {
+            state.setWealth(safeAdd(state.getWealth(), 1000));
+            state.setHealth(clamp(safeAdd(state.getHealth(), -5), 0, 100));
+            state.setPower(clamp(safeAdd(state.getPower(), 5), 0, 100));
+        } else if ("尝试新事物".equals(choiceContent)) {
+            state.setFame(clamp(safeAdd(state.getFame(), 8), 0, 100));
+            state.setPower(clamp(safeAdd(state.getPower(), 3), 0, 100));
         }
     }
 
@@ -209,10 +285,10 @@ public class DefaultGameEngine implements GameEngine {
         if (PARTNER_START_EVENTS.contains(eventCode)) {
             state.setHasPartner(true);
         }
-        if ("MARRIAGE_PROPOSE".equals(eventCode)) {
+        if ("MARRIAGE_PROPOSE".equals(eventCode) || MILESTONE_MARRIAGE.equals(eventCode)) {
             state.setHasPartner(true);
         }
-        if ("WEDDING".equals(eventCode)) {
+        if ("WEDDING".equals(eventCode) || MILESTONE_MARRIAGE.equals(eventCode)) {
             state.setHasPartner(true);
             state.setMarried(true);
         }
@@ -223,7 +299,7 @@ public class DefaultGameEngine implements GameEngine {
         if ("BREAKUP".equals(eventCode)) {
             state.setHasPartner(false);
         }
-        if ("CHILD_BORN".equals(eventCode)) {
+        if ("CHILD_BORN".equals(eventCode) || MILESTONE_CHILD.equals(eventCode)) {
             ChildrenState children = state.ensureChildren();
             children.setCount(safeAdd(children.getCount(), 1));
             children.setAbility(clamp(safeAdd(children.getAbility(), 25), 0, 100));
@@ -278,14 +354,14 @@ public class DefaultGameEngine implements GameEngine {
         );
     }
 
-    private boolean isKeyEvent(int step, String choiceContent) {
-        if (step % 5 == 0) {
-            return true;
-        }
-        if (choiceContent == null) {
-            return false;
-        }
-        return KEY_EVENT_KEYWORDS.stream().anyMatch(choiceContent::contains);
+    /**
+     * 仅在进入里程碑步数时触发关键剧情, 避免选项关键词导致连续关键剧情死循环
+     *
+     * @param {int} nextStep - 即将进入的步数
+     * @returns {boolean} 是否关键剧情
+     */
+    private boolean isKeyEvent(int nextStep) {
+        return nextStep > 1 && nextStep % KEY_EVENT_STEP_INTERVAL == 0;
     }
 
     private boolean inStudentPhase(LifeState state) {

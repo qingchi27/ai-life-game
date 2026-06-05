@@ -47,6 +47,11 @@ public final class StoryEventFilter {
             "STARTUP_FAIL", "STARTUP_SUCCESS", "COFOUNDER_LEAVE", "ACQUIRE_OFFER"
     );
 
+    /** 仅由引擎在 30-40 岁里程碑强制触发, 不参与随机池 */
+    private static final Set<String> ENGINE_FORCED_ONLY = Set.of(
+            "MILESTONE_PARTNER", "MILESTONE_MARRIAGE", "MILESTONE_CHILD"
+    );
+
     private StoryEventFilter() {
     }
 
@@ -63,6 +68,9 @@ public final class StoryEventFilter {
             return false;
         }
         String code = event.getEventCode();
+        if (ENGINE_FORCED_ONLY.contains(code)) {
+            return false;
+        }
         if (isRecentDuplicate(state, code)) {
             return false;
         }

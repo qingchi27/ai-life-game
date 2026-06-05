@@ -1,4 +1,4 @@
--- 剧情事件池初始数据(100条)
+-- 剧情事件池初始数据(103条)
 -- 执行前可先清空: DELETE FROM story_event WHERE deleted = 0;
 
 INSERT INTO `story_event` (`event_code`, `title`, `event_type`, `rarity`, `min_age`, `max_age`, `event_content`, `choices`, `effect`)
@@ -402,4 +402,16 @@ VALUES
 ('DATA_LEAK_COMPANY', '公司数据泄露', 'career', 2, 24, 50,
  '公司数据库被拖库, 你作为负责人被问责...',
  '["连夜修复", "引咎辞职", "推给外包"]',
- '{"wealth": -3000, "health": -12, "fame": -10}');
+ '{"wealth": -3000, "health": -12, "fame": -10}'),
+('MILESTONE_PARTNER', '三十而立·遇见伴侣', 'relationship', 5, 30, 40,
+ '三十岁的关口, 家人朋友为你张罗相亲, 你也渴望安定下来...',
+ '["认真交往", "顺其自然", "专注工作"]',
+ '{"wealth": -1000, "affection": 20, "fame": 5}'),
+('MILESTONE_MARRIAGE', '三十而立·携手成家', 'relationship', 5, 30, 40,
+ '相处日久, 你们决定登记结婚, 开启人生新阶段...',
+ '["浪漫婚礼", "简单领证", "旅行结婚"]',
+ '{"wealth": -30000, "affection": 25, "fame": 10, "health": -5}'),
+('MILESTONE_CHILD', '三十而立·喜得贵子', 'family', 5, 30, 40,
+ '婚后不久, 家里迎来了新生命, 喜悦与责任一同到来...',
+ '["全职带娃", "请月嫂", "父母帮忙"]',
+ '{"wealth": -15000, "health": -8, "affection": 20, "fame": 8, "childCount": 1, "childAbility": 25}');

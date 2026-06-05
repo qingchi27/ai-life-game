@@ -51,25 +51,49 @@ public class StoryGenerator {
      * @param {LifeState} state - 当前状态
      * @param {String} choiceContent - 用户选择
      * @param {int} age - 当前年龄
+     * @param {int} milestoneStep - 里程碑步数
      * @returns {GameResult} 关键节点剧情
      */
-    public GameResult generateKeyStory(LifeState state, String choiceContent, int age) {
+    public GameResult generateKeyStory(LifeState state, String choiceContent, int age, int milestoneStep) {
         GameResult result = new GameResult();
-        result.setState(copyState(state));
         String occupation = state.getOccupation() == null ? "社会新人" : state.getOccupation();
         String phase = resolvePhaseDesc(state);
-        result.setStory(String.format(
-                "%d岁的你%s, 上一步选择了「%s」, 在%s方向上人生出现新的转折, 权力与名气也在悄然变化...",
-                age, phase, choiceContent, occupation));
-        result.setChoices(List.of(
-                new ChoiceVO("A", "扩大副业"),
-                new ChoiceVO("B", "继续稳定上班"),
-                new ChoiceVO("C", "辞职创业")
-        ));
+        int phaseIndex = (milestoneStep / 5) % 3;
+        result.setStory(buildKeyStoryText(age, phase, choiceContent, occupation, milestoneStep, phaseIndex));
+        result.setChoices(buildKeyChoices(phaseIndex));
         result.setUseAi(true);
         result.setAgeDelta(2);
         result.setEnd(false);
         return result;
+    }
+
+    private String buildKeyStoryText(int age, String phase, String choiceContent,
+                                     String occupation, int milestoneStep, int phaseIndex) {
+        String theme = switch (phaseIndex) {
+            case 0 -> "事业路径";
+            case 1 -> "人脉与感情";
+            default -> "生活节奏";
+        };
+        return String.format(
+                "第%d个五年节点, %d岁的你%s。上一步选择了「%s」, 在%s方向上迎来%s的抉择, 人生出现新的转折...",
+                milestoneStep / 5, age, phase, choiceContent, occupation, theme);
+    }
+
+    private List<ChoiceVO> buildKeyChoices(int phaseIndex) {
+        return switch (phaseIndex) {
+            case 0 -> List.of(
+                    new ChoiceVO("A", "扩大副业"),
+                    new ChoiceVO("B", "继续稳定上班"),
+                    new ChoiceVO("C", "辞职创业"));
+            case 1 -> List.of(
+                    new ChoiceVO("A", "多陪伴家人"),
+                    new ChoiceVO("B", "拓展社交圈"),
+                    new ChoiceVO("C", "专注自我成长"));
+            default -> List.of(
+                    new ChoiceVO("A", "放慢节奏"),
+                    new ChoiceVO("B", "保持冲劲"),
+                    new ChoiceVO("C", "尝试新事物"));
+        };
     }
 
     /**
