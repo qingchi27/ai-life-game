@@ -1,12 +1,9 @@
 package com.qingchi.ailife.config;
 
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
-
-import java.time.Duration;
 
 /**
  * DeepSeek HTTP 客户端配置
@@ -15,7 +12,6 @@ import java.time.Duration;
  * @date 2026/6/5
  */
 @Configuration
-@EnableConfigurationProperties(DeepSeekProperties.class)
 public class DeepSeekConfig {
 
     /**

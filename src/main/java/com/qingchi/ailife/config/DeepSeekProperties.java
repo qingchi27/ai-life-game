@@ -30,7 +30,7 @@ public class DeepSeekProperties {
      **/
     private String baseUrl = "https://api.deepseek.com";
 
-    /**
+    /**deepSeekProperties
      * 模型名称
      **/
     private String model = "deepseek-chat";
