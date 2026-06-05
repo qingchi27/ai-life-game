@@ -1,8 +1,12 @@
 package com.qingchi.ailife.service.impl;
 
 import com.qingchi.ailife.ai.StoryGenerator;
+import com.qingchi.ailife.ai.dto.EndingContext;
+import com.qingchi.ailife.ai.dto.NarrativeContext;
+import com.qingchi.ailife.ai.dto.NarrativeResult;
 import com.qingchi.ailife.common.ErrorCode;
 import com.qingchi.ailife.common.ServiceExceptionUtil;
+import com.qingchi.ailife.config.DeepSeekProperties;
 import com.qingchi.ailife.config.GameProperties;
 import com.qingchi.ailife.convertor.GameConvertor;
 import com.qingchi.ailife.domain.GameStatusEnum;
@@ -19,6 +23,7 @@ import com.qingchi.ailife.service.IAiPromptLogService;
 import com.qingchi.ailife.service.IGameService;
 import com.qingchi.ailife.service.IGameSessionService;
 import com.qingchi.ailife.service.IGameStepService;
+import com.qingchi.ailife.service.INarrativeService;
 import com.qingchi.ailife.util.JsonUtil;
 import com.qingchi.ailife.vo.ChoiceVO;
 import com.qingchi.ailife.vo.EndGameResp;
@@ -60,6 +65,12 @@ public class GameServiceImpl implements IGameService {
     private StoryGenerator storyGenerator;
 
     @Resource
+    private INarrativeService narrativeService;
+
+    @Resource
+    private DeepSeekProperties deepSeekProperties;
+
+    @Resource
     private GameProperties gameProperties;
 
     @Override
@@ -67,6 +78,7 @@ public class GameServiceImpl implements IGameService {
     public GameResp start(StartGameReq req) {
         log.info("开始人生游戏, playerName: {}", req.getPlayerName());
         GameResult gameResult = gameEngine.start(req.getPlayerName());
+        applyAiNarrative(req.getPlayerName(), 18, 1, null, gameResult, List.of());
 
         GameSession session = new GameSession();
         session.setUserId(gameProperties.getDefaultUserId());
@@ -102,6 +114,9 @@ public class GameServiceImpl implements IGameService {
                 stateBefore, choiceContent, session.getCurrentStep(), session.getCurrentAge());
 
         int nextStep = session.getCurrentStep() + 1;
+        List<String> historySummaries = buildHistorySummaries(session.getId());
+        applyAiNarrative(session.getPlayerName(), session.getCurrentAge(), nextStep,
+                choiceContent, gameResult, historySummaries);
         int nextAge = session.getCurrentAge() + gameResult.getAgeDelta();
         boolean reachMaxStep = nextStep >= gameProperties.getMaxStep();
         int lifespan = gameResult.getState().getLifespan() == null ? 120 : gameResult.getState().getLifespan();
@@ -117,7 +132,8 @@ public class GameServiceImpl implements IGameService {
         if (naturalEnd) {
             session.setGameStatus(GameStatusEnum.ENDED.getCode());
             session.setScore(calculateScore(gameResult.getState()));
-            session.setEndingSummary(storyGenerator.generateEndingSummary(gameResult.getState(), session.getPlayerName()));
+            session.setEndingSummary(generateEndingSummaryWithAi(
+                    session, gameResult.getState(), nextAge, gameResult.getStory(), choiceContent));
             gameResult.setEnd(true);
         }
         gameSessionService.updateSession(session);
@@ -148,8 +164,8 @@ public class GameServiceImpl implements IGameService {
         LifeState state = GameConvertor.parseLifeState(session.getLifeStatus());
         session.setGameStatus(GameStatusEnum.ENDED.getCode());
         session.setScore(calculateScore(state));
-        String summary = storyGenerator.generateEndingSummary(state, session.getPlayerName());
-        session.setEndingSummary(summary);
+        session.setEndingSummary(generateEndingSummaryWithAi(
+                session, state, session.getCurrentAge(), session.getCurrentStory(), null));
         gameSessionService.updateSession(session);
         log.info("人生主动结束成功, sessionId: {}, score: {}", session.getId(), session.getScore());
         return buildEndResp(session);
@@ -216,9 +232,116 @@ public class GameServiceImpl implements IGameService {
         AiPromptLog aiLog = new AiPromptLog();
         aiLog.setSessionId(sessionId);
         aiLog.setPromptType(promptType);
-        aiLog.setPromptContent(prompt);
+        aiLog.setPromptContent(result.getAiPrompt() != null ? result.getAiPrompt() : prompt);
         aiLog.setResponseContent(result.getStory());
-        aiLog.setTokenUsage(0);
+        aiLog.setTokenUsage(result.getTokenUsage() == null ? 0 : result.getTokenUsage());
+        aiPromptLogService.saveLog(aiLog);
+    }
+
+    /**
+     * 调用 DeepSeek 生成剧情, 逻辑与选项仍由引擎控制
+     */
+    private void applyAiNarrative(String playerName, int age, int step, String userChoice,
+                                   GameResult gameResult, List<String> historySummaries) {
+        String eventTitle = gameResult.getEvent() != null ? gameResult.getEvent().getTitle() : "人生事件";
+        String eventType = gameResult.getEventType() == null ? "life" : gameResult.getEventType();
+        boolean opening = step <= 1 && (userChoice == null || userChoice.isBlank());
+
+        NarrativeContext context = NarrativeContext.builder()
+                .playerName(playerName)
+                .age(age)
+                .step(step)
+                .userChoice(userChoice)
+                .eventTitle(eventTitle)
+                .eventType(eventType)
+                .eventTemplate(gameResult.getStory())
+                .state(gameResult.getState())
+                .historySummaries(historySummaries)
+                .opening(opening)
+                .build();
+
+        NarrativeResult narrative = narrativeService.generate(context);
+        gameResult.setStory(narrative.getText());
+        gameResult.setUseAi(narrative.isFromAi());
+        gameResult.setAiPrompt(narrative.getPrompt());
+        gameResult.setTokenUsage(narrative.getTokenUsage());
+    }
+
+    private List<String> buildHistorySummaries(Long sessionId) {
+        List<GameStep> steps = gameStepService.listBySessionId(sessionId);
+        if (steps == null || steps.isEmpty()) {
+            return List.of();
+        }
+        int limit = deepSeekProperties.getHistoryLimit() == null ? 5 : deepSeekProperties.getHistoryLimit();
+        int from = Math.max(0, steps.size() - limit);
+        List<String> summaries = new ArrayList<>();
+        for (int i = from; i < steps.size(); i++) {
+            GameStep step = steps.get(i);
+            String choice = step.getUserChoice();
+            String story = step.getStory();
+            if (story == null || story.isBlank()) {
+                continue;
+            }
+            String brief = story.length() > 60 ? story.substring(0, 60) + "..." : story;
+            if (choice != null && !choice.isBlank()) {
+                summaries.add("选择「" + choice + "」后: " + brief);
+            } else {
+                summaries.add(brief);
+            }
+        }
+        return summaries;
+    }
+
+    /**
+     * 调用 DeepSeek 生成结局摘要, 失败时回退模板
+     */
+    private String generateEndingSummaryWithAi(GameSession session, LifeState state, int age,
+                                               String latestStory, String latestChoice) {
+        String template = storyGenerator.generateEndingSummary(state, session.getPlayerName());
+        int score = calculateScore(state);
+        String title = resolveEndingTitle(state);
+        List<String> history = appendLatestHistory(
+                buildHistorySummaries(session.getId()), latestStory, latestChoice);
+
+        EndingContext context = EndingContext.builder()
+                .playerName(session.getPlayerName())
+                .age(age)
+                .score(score)
+                .endingTitle(title)
+                .templateSummary(template)
+                .state(state)
+                .historySummaries(history)
+                .build();
+
+        NarrativeResult result = narrativeService.generateEnding(context);
+        saveEndingAiLog(session.getId(), result);
+        return result.getText();
+    }
+
+    private List<String> appendLatestHistory(List<String> history, String latestStory, String latestChoice) {
+        if (latestStory == null || latestStory.isBlank()) {
+            return history;
+        }
+        List<String> extended = new ArrayList<>(history);
+        String brief = latestStory.length() > 80 ? latestStory.substring(0, 80) + "..." : latestStory;
+        if (latestChoice != null && !latestChoice.isBlank()) {
+            extended.add("最后选择「" + latestChoice + "」: " + brief);
+        } else {
+            extended.add("最后: " + brief);
+        }
+        return extended;
+    }
+
+    private void saveEndingAiLog(Long sessionId, NarrativeResult result) {
+        if (!result.isFromAi()) {
+            return;
+        }
+        AiPromptLog aiLog = new AiPromptLog();
+        aiLog.setSessionId(sessionId);
+        aiLog.setPromptType("end");
+        aiLog.setPromptContent(result.getPrompt());
+        aiLog.setResponseContent(result.getText());
+        aiLog.setTokenUsage(result.getTokenUsage());
         aiPromptLogService.saveLog(aiLog);
     }
 

@@ -24,4 +24,14 @@ public class GameResult {
     private boolean useAi;
     private boolean end;
     private int ageDelta;
+
+    /**
+     * AI 请求 prompt, 用于日志
+     **/
+    private String aiPrompt;
+
+    /**
+     * AI token 消耗
+     **/
+    private Integer tokenUsage;
 }

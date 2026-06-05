@@ -2,6 +2,7 @@ package com.qingchi.ailife.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qingchi.ailife.common.ErrorCode;
 import com.qingchi.ailife.common.ServiceExceptionUtil;
@@ -49,6 +50,17 @@ public final class JsonUtil {
             return OBJECT_MAPPER.readValue(json, typeReference);
         } catch (JsonProcessingException e) {
             throw ServiceExceptionUtil.exception(ErrorCode.PARAM_ERROR);
+        }
+    }
+
+    public static JsonNode readTree(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readTree(json);
+        } catch (JsonProcessingException e) {
+            return null;
         }
     }
 }

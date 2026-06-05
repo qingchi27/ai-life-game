@@ -20,3 +20,12 @@ logging:
 game:
   max-step: 30
   default-user-id: 1
+
+deepseek:
+  enabled: ${DEEPSEEK_ENABLED:false}
+  api-key: ${DEEPSEEK_API_KEY:}
+  base-url: https://api.deepseek.com
+  model: deepseek-chat
+  max-tokens: 400
+  timeout-seconds: 30
+  history-limit: 5
