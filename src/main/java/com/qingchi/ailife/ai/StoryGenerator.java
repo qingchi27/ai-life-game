@@ -1,10 +1,14 @@
 package com.qingchi.ailife.ai;
 
+import com.qingchi.ailife.domain.ChildrenState;
+import com.qingchi.ailife.domain.FamilyBackgroundType;
 import com.qingchi.ailife.domain.LifeState;
+import com.qingchi.ailife.engine.FamilyBackgroundInitializer;
 import com.qingchi.ailife.engine.GameResult;
 import com.qingchi.ailife.vo.ChoiceVO;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,11 +28,14 @@ public class StoryGenerator {
      */
     public GameResult generateOpening(String playerName) {
         GameResult result = new GameResult();
-        LifeState state = defaultState();
+        LifeState state = new LifeState();
+        FamilyBackgroundType background = FamilyBackgroundInitializer.applyRandom(state);
         result.setState(state);
-        result.setStory(String.format("%s, 你出生在一个普通家庭, 18岁那年你选择了程序员这条路...", playerName));
+        result.setStory(String.format(
+                "%s, 你出生在%s。18岁那年高考结束, 你考入一所普通大学的计算机专业, 开启了大学生活...",
+                playerName, background.getLabel()));
         result.setChoices(List.of(
-                new ChoiceVO("A", "努力工作"),
+                new ChoiceVO("A", "努力学习"),
                 new ChoiceVO("B", "开始副业"),
                 new ChoiceVO("C", "躺平")
         ));
@@ -39,18 +46,21 @@ public class StoryGenerator {
     }
 
     /**
-     * 生成关键节点AI剧情
+     * 生成关键节点剧情
      *
      * @param {LifeState} state - 当前状态
      * @param {String} choiceContent - 用户选择
-     * @param {int} step - 当前步数
-     * @returns {GameResult} AI剧情
+     * @param {int} age - 当前年龄
+     * @returns {GameResult} 关键节点剧情
      */
-    public GameResult generateKeyStory(LifeState state, String choiceContent, int step) {
+    public GameResult generateKeyStory(LifeState state, String choiceContent, int age) {
         GameResult result = new GameResult();
         result.setState(copyState(state));
-        String career = state.getCareer() == null ? "打工人" : state.getCareer();
-        result.setStory(String.format("第%d年, 你选择了「%s」, 职业方向逐渐向%s靠拢, 人生出现新的转折...", step, choiceContent, career));
+        String occupation = state.getOccupation() == null ? "社会新人" : state.getOccupation();
+        String phase = resolvePhaseDesc(state);
+        result.setStory(String.format(
+                "%d岁的你%s, 上一步选择了「%s」, 在%s方向上人生出现新的转折, 权力与名气也在悄然变化...",
+                age, phase, choiceContent, occupation));
         result.setChoices(List.of(
                 new ChoiceVO("A", "扩大副业"),
                 new ChoiceVO("B", "继续稳定上班"),
@@ -70,27 +80,69 @@ public class StoryGenerator {
      * @returns {String} 结局摘要
      */
     public String generateEndingSummary(LifeState state, String playerName) {
-        return String.format("%s的一生落下帷幕: 积蓄约%d元, 健康%d, 最终职业是%s。",
-                playerName, state.getMoney(), state.getHealth(), state.getCareer());
+        ChildrenState children = state.getChildren();
+        int childCount = state.childCount();
+        int childAbility = children == null || children.getAbility() == null ? 0 : children.getAbility();
+        int childAchievement = children == null || children.getAchievement() == null ? 0 : children.getAchievement();
+        String familyBackground = state.getFamilyBackground() == null ? "未知家庭" : state.getFamilyBackground();
+        return String.format(
+                "%s的一生落下帷幕: 出身%s, 感情%d, 财富%d, 子女%d人(能力%d/成就%d), 权力%d, 名气%d, 健康%d, 享年%d岁。",
+                playerName,
+                familyBackground,
+                safe(state.getAffection()),
+                safe(state.getWealth()),
+                childCount,
+                childAbility,
+                childAchievement,
+                safe(state.getPower()),
+                safe(state.getFame()),
+                safe(state.getHealth()),
+                safe(state.getLifespan()));
     }
 
-    private LifeState defaultState() {
-        LifeState state = new LifeState();
-        state.setMoney(3000);
-        state.setHealth(80);
-        state.setLuck(50);
-        state.setCareer("程序员");
-        state.setRelationship(40);
-        return state;
+    private int safe(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private String resolvePhaseDesc(LifeState state) {
+        if (Boolean.TRUE.equals(state.getGraduated()) || !isStudent(state)) {
+            if (Boolean.TRUE.equals(state.getMarried())) {
+                return "在工作与家庭之间寻找平衡";
+            }
+            return "在职场中摸索前行";
+        }
+        return "在大学校园里成长";
+    }
+
+    private boolean isStudent(LifeState state) {
+        String occupation = state.getOccupation();
+        return occupation != null && (occupation.contains("大学") || "大学生".equals(occupation));
     }
 
     private LifeState copyState(LifeState source) {
         LifeState target = new LifeState();
-        target.setMoney(source.getMoney());
+        target.setFamilyBackground(source.getFamilyBackground());
+        target.setAffection(source.getAffection());
+        target.setWealth(source.getWealth());
+        target.setPower(source.getPower());
+        target.setFame(source.getFame());
         target.setHealth(source.getHealth());
-        target.setLuck(source.getLuck());
-        target.setCareer(source.getCareer());
-        target.setRelationship(source.getRelationship());
+        target.setLifespan(source.getLifespan());
+        target.setOccupation(source.getOccupation());
+        if (source.getChildren() != null) {
+            ChildrenState children = new ChildrenState();
+            children.setCount(source.getChildren().getCount());
+            children.setAbility(source.getChildren().getAbility());
+            children.setAchievement(source.getChildren().getAchievement());
+            target.setChildren(children);
+        }
+        target.setGraduated(source.getGraduated());
+        target.setHasPartner(source.getHasPartner());
+        target.setMarried(source.getMarried());
+        target.setHasChild(source.getHasChild());
+        if (source.getRecentEventCodes() != null) {
+            target.setRecentEventCodes(new ArrayList<>(source.getRecentEventCodes()));
+        }
         return target;
     }
 }

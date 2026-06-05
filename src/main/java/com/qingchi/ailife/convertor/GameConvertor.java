@@ -1,9 +1,12 @@
 package com.qingchi.ailife.convertor;
 
+import com.qingchi.ailife.domain.ChildrenState;
 import com.qingchi.ailife.domain.LifeState;
+import com.qingchi.ailife.engine.LifeStateNormalizer;
 import com.qingchi.ailife.entity.GameSession;
 import com.qingchi.ailife.entity.GameStep;
 import com.qingchi.ailife.util.JsonUtil;
+import com.qingchi.ailife.vo.ChildrenStateVO;
 import com.qingchi.ailife.vo.ChoiceVO;
 import com.qingchi.ailife.vo.GameResp;
 import com.qingchi.ailife.vo.HistoryStepVO;
@@ -27,16 +30,33 @@ public final class GameConvertor {
             return null;
         }
         LifeStateVO vo = new LifeStateVO();
-        vo.setMoney(state.getMoney());
+        vo.setFamilyBackground(state.getFamilyBackground());
+        vo.setAffection(state.getAffection());
+        vo.setWealth(state.getWealth());
+        vo.setPower(state.getPower());
+        vo.setFame(state.getFame());
         vo.setHealth(state.getHealth());
-        vo.setLuck(state.getLuck());
-        vo.setCareer(state.getCareer());
-        vo.setRelationship(state.getRelationship());
+        vo.setLifespan(state.getLifespan());
+        vo.setChildren(toChildrenVO(state.getChildren()));
+        return vo;
+    }
+
+    private static ChildrenStateVO toChildrenVO(ChildrenState children) {
+        ChildrenStateVO vo = new ChildrenStateVO();
+        if (children == null) {
+            vo.setCount(0);
+            vo.setAbility(0);
+            vo.setAchievement(0);
+            return vo;
+        }
+        vo.setCount(children.getCount() == null ? 0 : children.getCount());
+        vo.setAbility(children.getAbility() == null ? 0 : children.getAbility());
+        vo.setAchievement(children.getAchievement() == null ? 0 : children.getAchievement());
         return vo;
     }
 
     public static LifeState parseLifeState(String json) {
-        return JsonUtil.fromJson(json, LifeState.class);
+        return LifeStateNormalizer.parse(json);
     }
 
     public static List<ChoiceVO> parseChoices(String json) {

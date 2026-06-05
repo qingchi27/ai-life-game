@@ -11,9 +11,43 @@ import lombok.Data;
 @Data
 public class LifeStateVO {
 
-    private Integer money;
+    /**
+     * 家庭条件
+     **/
+    private String familyBackground;
+
+    /**
+     * 感情, 含亲情友情爱情
+     **/
+    private Integer affection;
+
+    /**
+     * 财富
+     **/
+    private Integer wealth;
+
+    /**
+     * 子女
+     **/
+    private ChildrenStateVO children;
+
+    /**
+     * 权力
+     **/
+    private Integer power;
+
+    /**
+     * 名气
+     **/
+    private Integer fame;
+
+    /**
+     * 身体健康
+     **/
     private Integer health;
-    private Integer luck;
-    private String career;
-    private Integer relationship;
+
+    /**
+     * 预期寿命
+     **/
+    private Integer lifespan;
 }

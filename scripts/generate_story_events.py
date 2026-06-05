@@ -35,7 +35,7 @@ EVENTS = [
     ("WORKPLACE_BULLY", "职场PUA", "career", 2, 23, 45, "直属领导总是否定你的工作, 让你怀疑自己...", '["正面刚", "越级汇报", "默默忍受"]', {"money": 0, "health": -10, "luck": -8}),
     ("INDUSTRY_CHANGE", "行业巨变", "career", 2, 25, 55, "AI取代了很多岗位, 你所在的业务线被砍了...", '["转型AI", "考公上岸", "出国深造"]', {"money": -1000, "luck": -5, "health": -5}),
     ("GOVERNMENT_JOB", "考公上岸", "career", 3, 23, 35, "经过一年备考, 你终于通过了公务员考试...", '["去报到", "再考虑", "放弃体制内"]', {"money": 2000, "luck": 15, "health": 5, "career": "公务员"}),
-    ("HEALTH_WARNING", "健康预警", "life", 1, 25, 60, "长期熬夜让你的身体发出警告, 体检报告有几项指标偏高...", '["拼命加班", "开始副业", "躺平休息"]', {"money": -500, "health": -10, "luck": 0}),
+    ("HEALTH_WARNING", "健康预警", "life", 1, 25, 60, "长期熬夜让你的身体发出警告, 体检报告有几项指标偏高...", '["继续硬扛", "开始调理", "躺平休息"]', {"money": -500, "health": -10, "luck": 0}),
     ("GYM_START", "开始健身", "life", 1, 22, 50, "你办了健身卡, 决心改掉久坐的毛病...", '["请私教", "自己练", "三天打鱼"]', {"money": -2000, "health": 12, "luck": 3}),
     ("INSOMNIA", "失眠困扰", "life", 1, 25, 55, "连续几周睡不着, 白天精神恍惚...", '["看医生", "冥想放松", "加班累到睡"]', {"money": -800, "health": -8, "luck": -3}),
     ("BUY_HOUSE", "买房决策", "finance", 3, 26, 45, "看了半年房, 终于有一套心仪的, 首付够但月供压力大...", '["咬牙上车", "再等等", "租更好的"]', {"money": -50000, "luck": 10, "health": -3}),
@@ -134,6 +134,30 @@ def esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace("'", "''")
 
 
+def map_effect(code: str, effect: dict) -> dict:
+    """将旧版效果键映射为六维人生状态键"""
+    result: dict = {}
+    key_map = {"money": "wealth", "luck": "fame", "relationship": "affection"}
+    for k, v in effect.items():
+        if k == "career":
+            result["occupation"] = v
+            result["power"] = result.get("power", 0) + 8
+        elif k in key_map:
+            result[key_map[k]] = v
+        else:
+            result[k] = v
+    if code == "CHILD_BORN":
+        result["childCount"] = result.get("childCount", 0) + 1
+        result["childAbility"] = result.get("childAbility", 0) + 25
+    if code in ("CHILD_EDUCATION", "CHILD_COLLEGE", "GRANDCHILD"):
+        result["childAchievement"] = result.get("childAchievement", 0) + 10
+    if code in ("PROMOTION", "MANAGER_ROLE", "GOVERNMENT_JOB", "BIG_TECH_OFFER"):
+        result["power"] = result.get("power", 0) + 8
+    if code in ("VIRAL_VIDEO", "CONFERENCE_SPEAK", "MEDIA_INTERVIEW", "BOOK_PUBLISH", "PODCAST_HIT"):
+        result["fame"] = result.get("fame", 0) + 5
+    return result
+
+
 def main() -> None:
     events = EVENTS[:100]
     codes = [e[0] for e in events]
@@ -142,7 +166,7 @@ def main() -> None:
 
     rows = []
     for code, title, etype, rarity, min_a, max_a, content, choices, effect in events:
-        effect_json = json.dumps(effect, ensure_ascii=False)
+        effect_json = json.dumps(map_effect(code, effect), ensure_ascii=False)
         rows.append(
             f"('{code}', '{esc(title)}', '{etype}', {rarity}, {min_a}, {max_a},\n"
             f" '{esc(content)}',\n"

@@ -104,8 +104,10 @@ public class GameServiceImpl implements IGameService {
         int nextStep = session.getCurrentStep() + 1;
         int nextAge = session.getCurrentAge() + gameResult.getAgeDelta();
         boolean reachMaxStep = nextStep >= gameProperties.getMaxStep();
+        int lifespan = gameResult.getState().getLifespan() == null ? 120 : gameResult.getState().getLifespan();
         boolean naturalEnd = gameResult.isEnd() || reachMaxStep
-                || (gameResult.getState().getHealth() != null && gameResult.getState().getHealth() <= 0);
+                || (gameResult.getState().getHealth() != null && gameResult.getState().getHealth() <= 0)
+                || nextAge >= lifespan;
 
         session.setCurrentStep(nextStep);
         session.setCurrentAge(nextAge);
@@ -245,8 +247,14 @@ public class GameServiceImpl implements IGameService {
         if (state == null) {
             return "平凡的一生";
         }
-        if (state.getMoney() != null && state.getMoney() > 100000) {
-            return "财富自由的一生";
+        if (state.getWealth() != null && state.getWealth() > 100000) {
+            return "财富显赫的一生";
+        }
+        if (state.getPower() != null && state.getPower() >= 80) {
+            return "权势滔天的一生";
+        }
+        if (state.getFame() != null && state.getFame() >= 80) {
+            return "名满天下的一生";
         }
         if (state.getHealth() != null && state.getHealth() < 30) {
             return "透支健康的一生";
@@ -260,7 +268,7 @@ public class GameServiceImpl implements IGameService {
             tags.add("普通");
             return tags;
         }
-        if (state.getMoney() != null && state.getMoney() > 50000) {
+        if (state.getWealth() != null && state.getWealth() > 50000) {
             tags.add("富足");
         } else {
             tags.add("稳定");
@@ -268,10 +276,16 @@ public class GameServiceImpl implements IGameService {
         if (state.getHealth() != null && state.getHealth() >= 70) {
             tags.add("健康");
         }
-        if ("创业者".equals(state.getCareer())) {
+        if (state.getFame() != null && state.getFame() >= 60) {
+            tags.add("知名");
+        }
+        if (state.childCount() > 0) {
+            tags.add("有后");
+        }
+        if (state.getOccupation() != null && state.getOccupation().contains("创业")) {
             tags.add("冒险");
         } else {
-            tags.add("普通");
+            tags.add("踏实");
         }
         return tags;
     }
@@ -280,10 +294,17 @@ public class GameServiceImpl implements IGameService {
         if (state == null) {
             return 60;
         }
-        int moneyScore = Math.min(30, (state.getMoney() == null ? 0 : state.getMoney()) / 3000);
-        int healthScore = (state.getHealth() == null ? 50 : state.getHealth()) / 2;
-        int luckScore = (state.getLuck() == null ? 50 : state.getLuck()) / 5;
-        int relationScore = (state.getRelationship() == null ? 40 : state.getRelationship()) / 5;
-        return Math.min(100, moneyScore + healthScore + luckScore + relationScore);
+        int wealthScore = Math.min(20, (state.getWealth() == null ? 0 : state.getWealth()) / 5000);
+        int healthScore = (state.getHealth() == null ? 50 : state.getHealth()) / 5;
+        int fameScore = (state.getFame() == null ? 30 : state.getFame()) / 5;
+        int affectionScore = (state.getAffection() == null ? 40 : state.getAffection()) / 5;
+        int powerScore = (state.getPower() == null ? 20 : state.getPower()) / 5;
+        int childScore = 0;
+        if (state.getChildren() != null) {
+            int ability = state.getChildren().getAbility() == null ? 0 : state.getChildren().getAbility();
+            int achievement = state.getChildren().getAchievement() == null ? 0 : state.getChildren().getAchievement();
+            childScore = Math.min(15, (ability + achievement) / 10 + state.childCount() * 2);
+        }
+        return Math.min(100, wealthScore + healthScore + fameScore + affectionScore + powerScore + childScore);
     }
 }
